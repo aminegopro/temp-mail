@@ -2,12 +2,12 @@
 
 const BASE_URL = process.env.TEMPMAIL_URL || "http://localhost:3000"
 
-async function request(path: string, options?: RequestInit) {
+async function request(path, options) {
   const res = await fetch(`${BASE_URL}${path}`, options)
   return res.json()
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString()
 }
 
@@ -45,7 +45,7 @@ async function main() {
 
     case "inbox":
     case "list": {
-      let email: string
+      let email
       const emailArg = args[1]
       if (emailArg) {
         email = emailArg
