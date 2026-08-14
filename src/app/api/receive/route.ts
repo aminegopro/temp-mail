@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { simpleParser } from "mailparser"
 import { receiveMessage } from "@/lib/mail-service"
 
 interface AddressObject {
@@ -35,6 +36,23 @@ export async function POST(req: NextRequest) {
   const subject = (body.subject as string) || "(No Subject)"
   const text = (body.text as string) || (body as { textBody?: string }).textBody || ""
   const html = (body.html as string) || (body as { htmlBody?: string }).htmlBody || null
+
+  const raw = (body.raw as string) || ""
+  if (raw) {
+    try {
+      const parsed = await simpleParser(raw)
+      const parsedTo = Array.isArray(parsed.to) ? parsed.to[0]?.text : parsed.to?.text
+      const msg = receiveMessage(to || parsedTo || "", {
+        from: parsed.from?.text || from,
+        subject: parsed.subject || subject,
+        text: parsed.text || "",
+        html: parsed.html || null,
+      })
+      return NextResponse.json({ success: true, messageId: msg.id })
+    } catch {
+      return NextResponse.json({ error: "Failed to parse raw email" }, { status: 400 })
+    }
+  }
 
   if (!to) {
     return NextResponse.json({ error: "Invalid payload: recipient required" }, { status: 400 })
