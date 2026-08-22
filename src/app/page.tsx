@@ -20,9 +20,7 @@ export default function Home() {
   const [polling, setPolling] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState("00:00")
-  const [prevCount, setPrevCount] = useState(0)
   const [testSending, setTestSending] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const generateEmail = async () => {
@@ -34,7 +32,6 @@ export default function Home() {
       setMessages([])
       setSelectedMsg(null)
       setStartTime(Date.now())
-      setPrevCount(0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -62,12 +59,11 @@ export default function Home() {
   useEffect(() => {
     if (!email) return
 
-    // Initial fetch
-    pollInbox()
-
-    intervalRef.current = setInterval(pollInbox, 5000)
+    const initial = setTimeout(() => pollInbox(), 0)
+    const id = setInterval(pollInbox, 5000)
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      clearTimeout(initial)
+      clearInterval(id)
     }
   }, [email, pollInbox])
 
@@ -88,14 +84,6 @@ export default function Home() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [startTime])
-
-  // Track new messages
-  useEffect(() => {
-    if (messages.length > prevCount && prevCount > 0) {
-      // New message arrived
-    }
-    setPrevCount(messages.length)
-  }, [messages.length, prevCount])
 
   const sendTestEmail = async () => {
     if (!email) return
@@ -127,10 +115,6 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
-
   return (
     <div className="flex flex-col flex-1 relative" style={{ zIndex: 1 }}>
       {/* Header */}
@@ -143,10 +127,10 @@ export default function Home() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: "var(--gradient-accent)",
+                background: "var(--primary)",
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#050510" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
                 <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
               </svg>
@@ -201,17 +185,20 @@ export default function Home() {
         {!email ? (
           /* ═══════ Hero / Landing ═══════ */
           <div className="hero">
-            <div className="empty-icon" style={{ width: 72, height: 72, fontSize: "1.8rem", marginBottom: 24 }}>
-              ✉️
+            <div className="empty-icon" style={{ width: 64, height: 64, fontSize: "1.5rem", marginBottom: 20 }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
             </div>
             <h2 className="hero-title">
-              <span className="hero-title-gradient">Temporary</span>
-              <br />
-              Email Address
+              <span className="hero-title-gradient">Temporary</span> email,{" "}
+              <br className="sm:hidden" />
+              instantly
             </h2>
             <p className="hero-subtitle">
-              Generate a disposable email address instantly. No signup, no password
-              — just a clean inbox for sign-ups and verifications.
+              Generate a disposable email address in one click. No signup, no
+              password — a clean inbox for sign-ups and verifications.
             </p>
             <div className="hero-btn">
               <button
@@ -348,7 +335,12 @@ export default function Home() {
 
                 {messages.length === 0 ? (
                   <div className="empty-state">
-                    <div className="empty-icon">📭</div>
+                    <div className="empty-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                      </svg>
+                    </div>
                     <p className="empty-title">No messages yet</p>
                   <p className="empty-text">
                     Waiting for incoming mail...
@@ -405,7 +397,17 @@ export default function Home() {
                               transition: "all 0.25s",
                             }}
                           >
-                            {selectedMsg?.id === msg.id ? "📧" : "✉️"}
+                            {selectedMsg?.id === msg.id ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="2" y="4" width="20" height="16" rx="2" />
+                                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                              </svg>
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="message-subject">{msg.subject || "(No Subject)"}</p>

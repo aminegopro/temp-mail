@@ -26,10 +26,6 @@ export function receiveMessage(
   email: string,
   data: { from: string; subject: string; text: string; html: string | null }
 ) {
-  const inbox = getInbox(email)
-  if (!inbox) {
-    createInbox(email)
-  }
   const msg = addMessage(email, {
     from: data.from,
     to: email,
