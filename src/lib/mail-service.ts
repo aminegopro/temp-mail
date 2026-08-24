@@ -1,4 +1,4 @@
-import { createInbox, getInbox, addMessage, getMessage, deleteInbox } from "./mail-store"
+import { createInbox, getInbox, addMessage, getMessage, deleteInbox, DEFAULT_TTL_MS } from "./mail-store"
 
 const DOMAIN = process.env.MAIL_DOMAIN || "bigsummerdeal.com"
 
@@ -43,4 +43,16 @@ export function readMessage(messageId: string) {
 
 export function removeInbox(email: string) {
   return deleteInbox(email)
+}
+
+export function getTTLMs() {
+  return DEFAULT_TTL_MS
+}
+
+export function normalizeEmail(input: string): string {
+  const trimmed = input.trim().toLowerCase()
+  if (trimmed.includes("@")) {
+    return trimmed
+  }
+  return `${trimmed}@${DOMAIN}`
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { generateEmail } from "@/lib/mail-service"
+import { generateEmail, getMailbox, getTTLMs } from "@/lib/mail-service"
 
 export async function POST() {
   const email = generateEmail()
-  return NextResponse.json({ email })
+  const inbox = getMailbox(email)
+  return NextResponse.json({ email, expiresAt: inbox?.expiresAt ?? null, ttl: getTTLMs() })
 }

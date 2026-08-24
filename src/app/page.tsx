@@ -21,21 +21,70 @@ export default function Home() {
   const [startTime, setStartTime] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState("00:00")
   const [testSending, setTestSending] = useState(false)
+  const [expiresAt, setExpiresAt] = useState<string | null>(null)
+  const [remaining, setRemaining] = useState("")
+  const [openInput, setOpenInput] = useState("")
+  const [opening, setOpening] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const resetInbox = (data: { email: string; expiresAt?: string | null; messages?: Message[] }) => {
+    setEmail(data.email)
+    setMessages(data.messages ?? [])
+    setSelectedMsg(null)
+    setExpiresAt(data.expiresAt ?? null)
+    setStartTime(Date.now())
+  }
 
   const generateEmail = async () => {
     setLoading(true)
     try {
       const res = await fetch("/api/generate", { method: "POST" })
       const data = await res.json()
-      setEmail(data.email)
-      setMessages([])
-      setSelectedMsg(null)
-      setStartTime(Date.now())
+      resetInbox(data)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const openAddress = async () => {
+    if (!openInput.trim()) return
+    setOpening(true)
+    try {
+      const res = await fetch("/api/inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: openInput.trim() }),
+      })
+      const data = await res.json()
+      if (data.inbox) {
+        resetInbox({ email: data.inbox.email, expiresAt: data.inbox.expiresAt, messages: data.inbox.messages })
+        setOpenInput("")
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  const deleteInbox = async () => {
+    if (!email) return
+    setDeleting(true)
+    try {
+      await fetch(`/api/inbox/${encodeURIComponent(email)}`, { method: "DELETE" })
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDeleting(false)
+      setEmail(null)
+      setMessages([])
+      setSelectedMsg(null)
+      setExpiresAt(null)
+      setStartTime(null)
+      setElapsed("00:00")
     }
   }
 
@@ -47,6 +96,7 @@ export default function Home() {
       const data = await res.json()
       if (data.inbox) {
         setMessages(data.inbox.messages)
+        if (data.inbox.expiresAt) setExpiresAt(data.inbox.expiresAt)
       }
     } catch (err) {
       console.error(err)
@@ -67,7 +117,7 @@ export default function Home() {
     }
   }, [email, pollInbox])
 
-  // Session timer
+  // Session timer + expiry countdown
   useEffect(() => {
     if (!startTime) return
 
@@ -76,6 +126,19 @@ export default function Home() {
       const mins = Math.floor(diff / 60).toString().padStart(2, "0")
       const secs = (diff % 60).toString().padStart(2, "0")
       setElapsed(`${mins}:${secs}`)
+
+      if (expiresAt) {
+        const remainMs = new Date(expiresAt).getTime() - Date.now()
+        if (remainMs <= 0) {
+          setRemaining("expired")
+        } else {
+          const totalSec = Math.floor(remainMs / 1000)
+          const h = Math.floor(totalSec / 3600)
+          const m = Math.floor((totalSec % 3600) / 60)
+          const s = totalSec % 60
+          setRemaining(h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`)
+        }
+      }
     }
 
     update()
@@ -83,7 +146,7 @@ export default function Home() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [startTime])
+  }, [startTime, expiresAt])
 
   const sendTestEmail = async () => {
     if (!email) return
@@ -225,6 +288,46 @@ export default function Home() {
               </button>
             </div>
 
+            {/* Open existing address */}
+            <form
+              className="flex items-center gap-2 mt-6 w-full max-w-sm"
+              onSubmit={(e) => {
+                e.preventDefault()
+                openAddress()
+              }}
+            >
+              <div className="flex-1 flex items-center gap-2" style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                padding: "0 12px",
+                height: 40,
+              }}>
+                <span style={{ color: "var(--text-tertiary)", fontSize: 14 }}>@</span>
+                <input
+                  value={openInput}
+                  onChange={(e) => setOpenInput(e.target.value)}
+                  placeholder="open existing address"
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--foreground)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={opening || !openInput.trim()}
+                className="btn-secondary"
+                style={{ height: 40 }}
+              >
+                {opening ? "..." : "Open"}
+              </button>
+            </form>
+
             {/* Feature chips */}
             <div className="flex flex-wrap justify-center gap-3 mt-12" style={{ animation: "fadeIn 0.8s var(--ease-out) 0.45s both" }}>
               {["No Signup Required", "Instant Inbox", "Auto-Refresh"].map((feat) => (
@@ -299,6 +402,22 @@ export default function Home() {
                     </svg>
                     New
                   </button>
+                  <button
+                    onClick={deleteInbox}
+                    disabled={deleting}
+                    className="btn-secondary"
+                    style={{ color: "var(--error)", borderColor: "rgba(255,180,171,0.3)" }}
+                  >
+                    {deleting ? (
+                      "..."
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -308,6 +427,13 @@ export default function Home() {
                   <span className="timer-dot" />
                   <span>Session: {elapsed}</span>
                 </div>
+                {remaining && (
+                  <div className="timer">
+                    <span style={{ color: remaining === "expired" ? "var(--error)" : "var(--text-tertiary)" }}>
+                      {remaining === "expired" ? "Expired" : `Expires in ${remaining}`}
+                    </span>
+                  </div>
+                )}
                 <div className="status-badge status-polling" style={{ fontSize: "0.65rem" }}>
                   Auto-refresh: 5s
                 </div>
