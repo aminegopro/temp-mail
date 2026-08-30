@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import Link from "next/link"
 
 interface Message {
   id: string
@@ -205,6 +206,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/docs"
+              className="btn-secondary hidden sm:inline-flex"
+              style={{ padding: "6px 14px", fontSize: 13 }}
+            >
+              API Docs
+            </Link>
             {email && (
               <>
                 <div className="timer hidden sm:flex">
