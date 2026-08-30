@@ -20,9 +20,18 @@ const inboxes = new Map<string, Inbox>()
 
 export const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_MESSAGES_PER_INBOX = 50
+const MAX_INBOXES = 200
 
 function makeExpiry(): string {
   return new Date(Date.now() + DEFAULT_TTL_MS).toISOString()
+}
+
+function evictOldest(): void {
+  while (inboxes.size >= MAX_INBOXES) {
+    const oldest = inboxes.keys().next().value as string | undefined
+    if (oldest === undefined) break
+    inboxes.delete(oldest)
+  }
 }
 
 export function createInbox(email: string): Inbox {
@@ -30,6 +39,7 @@ export function createInbox(email: string): Inbox {
   if (existing) {
     return existing
   }
+  evictOldest()
   const inbox: Inbox = {
     email,
     createdAt: new Date().toISOString(),
