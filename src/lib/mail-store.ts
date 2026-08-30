@@ -19,6 +19,7 @@ export interface Inbox {
 const inboxes = new Map<string, Inbox>()
 
 export const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000
+const MAX_MESSAGES_PER_INBOX = 50
 
 function makeExpiry(): string {
   return new Date(Date.now() + DEFAULT_TTL_MS).toISOString()
@@ -70,6 +71,9 @@ export function addMessage(email: string, msg: Omit<Message, "id" | "createdAt">
     createdAt: new Date().toISOString(),
   }
   inbox.messages.unshift(message)
+  if (inbox.messages.length > MAX_MESSAGES_PER_INBOX) {
+    inbox.messages.length = MAX_MESSAGES_PER_INBOX
+  }
   return message
 }
 
